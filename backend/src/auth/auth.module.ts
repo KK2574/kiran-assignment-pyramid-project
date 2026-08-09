@@ -1,29 +1,19 @@
-import { Controller, Get, Post, UseGuards } from "@nestjs/common";
-import { JwtService } from "@nestjs/jwt";
-import { randomUUID } from "crypto";
+﻿import { Module } from "@nestjs/common";
+import { JwtModule } from "@nestjs/jwt";
+import { PassportModule } from "@nestjs/passport";
+import { AuthController } from "./auth.controller";
+import { GoogleStrategy } from "./google.strategy";
 import { GoogleAuthGuard } from "./google-auth.guard";
 
-@Controller("auth")
-export class AuthController {
-  constructor(private readonly jwtService: JwtService) {}
-
-  @Post("guest")
-  guestLogin() {
-    const user = {
-      id: randomUUID(),
-      name: "Guest",
-      email: "guest@pyramid.app",
-      isGuest: true,
-    };
-    const token = this.jwtService.sign(user);
-    return { user, token };
-  }
-
-  @Get("google")
-  @UseGuards(GoogleAuthGuard)
-  googleLogin() {}
-
-  @Get("google/callback")
-  @UseGuards(GoogleAuthGuard)
-  googleCallback() {}
-}
+@Module({
+  imports: [
+    PassportModule.register({ defaultStrategy: "google" }),
+    JwtModule.register({
+      secret: process.env.JWT_SECRET ?? "dev-only-secret-change-in-production",
+      signOptions: { expiresIn: "7d" },
+    }),
+  ],
+  controllers: [AuthController],
+  providers: [GoogleStrategy, GoogleAuthGuard],
+})
+export class AuthModule {}
