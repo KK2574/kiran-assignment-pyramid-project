@@ -30,15 +30,11 @@ export class AuthController {
   @UseGuards(GoogleAuthGuard)
   googleCallback(@Req() req: Request, @Res() res: Response) {
     const googleUser = (req as any).user;
-    this.logger.warn(`controller reached — googleUser=${JSON.stringify(googleUser)}`);
 
-    if (!googleUser || googleUser.__authFailed) {
-      this.logger.warn("controller no-op (auth failed marker or missing user)");
-      return;
-    }
+    if (!googleUser || googleUser.__authFailed) return;
 
     if (res.headersSent) {
-      this.logger.error("controller: headers already sent, aborting to avoid crash");
+      this.logger.warn("controller skipped — response already sent (likely a duplicate request)");
       return;
     }
 
@@ -51,7 +47,11 @@ export class AuthController {
       name: user.name,
       email: user.email,
     });
-    this.logger.warn(`controller redirecting to ${frontendUrl}/auth/callback`);
-    res.redirect(`${frontendUrl}/auth/callback?${params.toString()}`);
+
+    try {
+      res.redirect(`${frontendUrl}/auth/callback?${params.toString()}`);
+    } catch (e) {
+      this.logger.warn(`redirect failed harmlessly: ${(e as Error).message}`);
+    }
   }
 }

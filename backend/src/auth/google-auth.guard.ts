@@ -7,22 +7,24 @@ export class GoogleAuthGuard extends AuthGuard("google") {
   private readonly logger = new Logger(GoogleAuthGuard.name);
 
   handleRequest(err: any, user: any, info: any, context: ExecutionContext) {
-    this.logger.warn(
-      `handleRequest called — err=${JSON.stringify(err)} user=${JSON.stringify(user)} info=${JSON.stringify(info)}`,
-    );
-
     if (err || !user) {
       const res = context.switchToHttp().getResponse<Response>();
-      if (res.headersSent) {
-        this.logger.error("headers already sent before guard could redirect — skipping");
-        return { __authFailed: true };
-      }
       const frontendUrl = process.env.FRONTEND_URL ?? "http://localhost:3000";
-      this.logger.warn(`redirecting to ${frontendUrl}/login?error=google_auth_failed`);
-      res.redirect(`${frontendUrl}/login?error=google_auth_failed`);
+      this.safeRedirect(res, `${frontendUrl}/login?error=google_auth_failed`);
       return { __authFailed: true };
     }
-    this.logger.warn("auth succeeded, passing user through");
     return user;
+  }
+
+  private safeRedirect(res: Response, url: string) {
+    if (res.headersSent) {
+      this.logger.warn("skipped redirect — response already sent (likely a duplicate request)");
+      return;
+    }
+    try {
+      res.redirect(url);
+    } catch (e) {
+      this.logger.warn(`redirect failed harmlessly: ${(e as Error).message}`);
+    }
   }
 }
