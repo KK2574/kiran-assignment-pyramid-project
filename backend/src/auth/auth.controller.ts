@@ -20,10 +20,17 @@ export class AuthController {
     return { user, token };
   }
 
+  // Kicks off the real Google OAuth redirect. The guard itself redirects
+  // the browser to Google's consent screen — this handler body never runs.
   @Get("google")
   @UseGuards(GoogleAuthGuard)
   googleLogin() {}
 
+  // Google redirects back here whether the user approved or denied access.
+  // On denial, GoogleAuthGuard.handleRequest already redirected to /login
+  // and left req.user unset — so we just no-op in that case rather than
+  // trying to redirect a second time (which would crash with
+  // ERR_HTTP_HEADERS_SENT since the response was already sent).
   @Get("google/callback")
   @UseGuards(GoogleAuthGuard)
   googleCallback(@Req() req: Request, @Res() res: Response) {

@@ -46,9 +46,26 @@ The frontend works standalone too — if it can't reach the API it falls back to
 - **Settings/Profile**: editable name, title, username, leave workspace
 - **Responsive**: layouts collapse gracefully down to tablet/mobile widths using Tailwind breakpoints
 
+## Google OAuth setup (required for "Login with Google")
+
+1. Go to [Google Cloud Console → Credentials](https://console.cloud.google.com/apis/credentials)
+2. Create an OAuth 2.0 Client ID (Web application)
+3. Add authorized redirect URIs:
+   - `http://localhost:3001/auth/google/callback` (local dev)
+   - `https://your-backend-domain.com/auth/google/callback` (production, add after deploying)
+4. Copy the Client ID and Client Secret into `backend/.env`:
+   ```
+   GOOGLE_CLIENT_ID=your-client-id.apps.googleusercontent.com
+   GOOGLE_CLIENT_SECRET=your-client-secret
+   GOOGLE_CALLBACK_URL=http://localhost:3001/auth/google/callback
+   FRONTEND_URL=http://localhost:3000
+   JWT_SECRET=some-long-random-string
+   ```
+
+**How the flow works:** clicking "Login with Google" is a real link to `GET /auth/google` on the backend, which redirects the browser to Google's consent screen (via Passport's `GoogleStrategy`). Google redirects back to `GET /auth/google/callback`, the backend verifies the profile, signs a JWT, and redirects to the frontend's `/auth/callback?token=...&name=...&email=...`, which stores the session and sends the user to `/tasks`.
+
 ## Known deviations from the Figma (documented per assignment instructions)
 
-- **Google OAuth** is stubbed (`POST /auth/google` accepts a name/email and returns a session) rather than a full Google Identity Platform integration, since that requires a real OAuth client ID/secret tied to a specific deployed domain. To make it real: add `@nestjs/passport` + `passport-google-oauth20`, wire `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET`, and swap the frontend button to redirect to the backend's `/auth/google` redirect endpoint.
 - **Persistence**: uses SQLite (a file on disk) rather than Postgres/MongoDB, to keep the assessment runnable without provisioning an external database service. TypeORM makes this a small config change — in `backend/src/app.module.ts`, swap `type: "sqlite"` for `type: "postgres"` and add connection credentials; the entities, services, and controllers don't need to change.
 - Some fine-grained interaction details (subtask drag-reordering, full rich-text description editor) are simplified to plain inputs/textareas given the assessment time window.
 

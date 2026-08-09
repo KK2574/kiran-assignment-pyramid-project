@@ -4,6 +4,9 @@ import type { Response } from "express";
 
 @Injectable()
 export class GoogleAuthGuard extends AuthGuard("google") {
+  // Overriding handleRequest lets us redirect gracefully to the login page
+  // when Google denies/cancels access, instead of NestJS's default
+  // behaviour of throwing a raw 401 UnauthorizedException.
   handleRequest(err: any, user: any, info: any, context: ExecutionContext) {
     if (err || !user) {
       const res = context.switchToHttp().getResponse<Response>();

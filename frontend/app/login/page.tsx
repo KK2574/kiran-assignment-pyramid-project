@@ -1,21 +1,21 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { Suspense, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Triangle } from "lucide-react";
-import { useAuthStore } from "@/lib/auth-store";
+import { useAuthStore, GOOGLE_LOGIN_URL } from "@/lib/auth-store";
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter();
-  const { loginAsGuest, loginWithGoogle } = useAuthStore();
+  const params = useSearchParams();
+  const { loginAsGuest } = useAuthStore();
+  const [loading, setLoading] = useState(false);
 
-  const handleGuest = () => {
-    loginAsGuest();
-    router.push("/tasks");
-  };
+  const authFailed = params.get("error") === "google_auth_failed";
 
-  const handleGoogle = () => {
-    // Real OAuth would redirect to the backend's /auth/google endpoint.
-    loginWithGoogle("Dexter", "dexter@gmail.com");
+  const handleGuest = async () => {
+    setLoading(true);
+    await loginAsGuest();
     router.push("/tasks");
   };
 
@@ -34,20 +34,32 @@ export default function LoginPage() {
           Enter your email below to login to your account.
         </p>
 
-        <button
-          onClick={handleGuest}
-          className="w-full bg-black text-white rounded-full py-3 text-sm font-medium mb-3 hover:opacity-90 transition"
-        >
-          Continue as Guest
-        </button>
+        {authFailed && (
+          <div
+            className="text-xs rounded-lg px-3 py-2 mb-4 text-center"
+            style={{ background: "#fef2f2", color: "#b91c1c", border: "1px solid #fecaca" }}
+          >
+            Google sign-in was cancelled or denied. You can try again, or continue as a guest.
+          </div>
+        )}
 
         <button
-          onClick={handleGoogle}
+          onClick={handleGuest}
+          disabled={loading}
+          className="w-full bg-black text-white rounded-full py-3 text-sm font-medium mb-3 hover:opacity-90 transition disabled:opacity-50"
+        >
+          {loading ? "Signing in…" : "Continue as Guest"}
+        </button>
+
+        {/* Real OAuth redirect — must be a full page navigation, not a fetch,
+            since Google needs to show its own consent screen. */}
+        <a
+          href={GOOGLE_LOGIN_URL}
           className="w-full border rounded-full py-3 text-sm font-medium flex items-center justify-center gap-2 hover:bg-black/5 dark:hover:bg-white/5 transition"
           style={{ borderColor: "var(--border)" }}
         >
           <GoogleIcon /> Login with Google
-        </button>
+        </a>
       </div>
 
       <p className="text-xs text-center mt-6 max-w-[380px]" style={{ color: "var(--text-muted)" }}>
@@ -56,6 +68,14 @@ export default function LoginPage() {
         <a href="#" className="underline">Privacy Policy</a>
       </p>
     </main>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginForm />
+    </Suspense>
   );
 }
 

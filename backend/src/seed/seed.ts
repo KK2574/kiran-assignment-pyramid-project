@@ -1,5 +1,6 @@
 // One-off script to populate the SQLite DB with demo data matching the
 // original Figma mock. Run with: npm run seed
+import "dotenv/config";
 import { NestFactory } from "@nestjs/core";
 import { AppModule } from "../app.module";
 import { TasksService } from "../tasks/tasks.service";
