@@ -35,7 +35,7 @@ export class AuthController {
   @UseGuards(GoogleAuthGuard)
   googleCallback(@Req() req: Request, @Res() res: Response) {
     const googleUser = (req as any).user;
-    if (!googleUser) return;
+    if (!googleUser || googleUser.__authFailed) return;
 
     const user = { id: randomUUID(), ...googleUser };
     const token = this.jwtService.sign(user);
