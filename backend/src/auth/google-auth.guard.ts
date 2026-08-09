@@ -1,12 +1,17 @@
 import { ExecutionContext, Injectable, Logger } from "@nestjs/common";
 import { AuthGuard } from "@nestjs/passport";
-import type { Response } from "express";
+import type { Response, Request } from "express";
 
 @Injectable()
 export class GoogleAuthGuard extends AuthGuard("google") {
   private readonly logger = new Logger(GoogleAuthGuard.name);
 
   handleRequest(err: any, user: any, info: any, context: ExecutionContext) {
+    const req = context.switchToHttp().getRequest<Request>();
+    this.logger.warn(
+      `handleRequest — query=${JSON.stringify(req.query)} err=${JSON.stringify(err)} user=${JSON.stringify(user)} info=${JSON.stringify(info)}`,
+    );
+
     if (err || !user) {
       const res = context.switchToHttp().getResponse<Response>();
       const frontendUrl = process.env.FRONTEND_URL ?? "http://localhost:3000";
