@@ -1,24 +1,52 @@
 import { ExecutionContext, Injectable, Logger } from "@nestjs/common";
 import { AuthGuard } from "@nestjs/passport";
+import { JwtService } from "@nestjs/jwt";
+import { randomUUID } from "crypto";
 import type { Response, Request } from "express";
+import { getCachedAuth, setCachedAuth } from "./auth-code-cache";
 
 @Injectable()
 export class GoogleAuthGuard extends AuthGuard("google") {
   private readonly logger = new Logger(GoogleAuthGuard.name);
 
-  handleRequest(err: any, user: any, info: any, context: ExecutionContext) {
-    const req = context.switchToHttp().getRequest<Request>();
-    this.logger.warn(
-      `handleRequest — query=${JSON.stringify(req.query)} err=${JSON.stringify(err)} user=${JSON.stringify(user)} info=${JSON.stringify(info)}`,
-    );
+  constructor(private readonly jwtService: JwtService) {
+    super();
+  }
 
-    if (err || !user) {
-      const res = context.switchToHttp().getResponse<Response>();
-      const frontendUrl = process.env.FRONTEND_URL ?? "http://localhost:3000";
-      this.safeRedirect(res, `${frontendUrl}/login?error=google_auth_failed`);
-      return { __authFailed: true };
+  handleRequest<TUser = any>(err: any, user: any, info: any, context: ExecutionContext): TUser {
+    const req = context.switchToHttp().getRequest<Request>();
+    const res = context.switchToHttp().getResponse<Response>();
+    const frontendUrl = process.env.FRONTEND_URL ?? "http://localhost:3000";
+    const code = req.query.code as string | undefined;
+
+    if (user) {
+      if (code) setCachedAuth(code, user);
+      this.completeLogin(res, frontendUrl, user);
+      return { __handled: true } as TUser;
     }
-    return user;
+
+    if (code) {
+      const cached = getCachedAuth(code);
+      if (cached) {
+        this.logger.warn("duplicate request reusing cached successful auth for this code");
+        this.completeLogin(res, frontendUrl, cached.user);
+        return { __handled: true } as TUser;
+      }
+    }
+
+    this.safeRedirect(res, `${frontendUrl}/login?error=google_auth_failed`);
+    return { __handled: true } as TUser;
+  }
+
+  private completeLogin(res: Response, frontendUrl: string, googleUser: any) {
+    const user = { id: randomUUID(), ...googleUser };
+    const token = this.jwtService.sign(user);
+    const params = new URLSearchParams({
+      token,
+      name: user.name,
+      email: user.email,
+    });
+    this.safeRedirect(res, `${frontendUrl}/auth/callback?${params.toString()}`);
   }
 
   private safeRedirect(res: Response, url: string) {
