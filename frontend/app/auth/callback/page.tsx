@@ -13,10 +13,11 @@ function CallbackHandler() {
     const token = params.get("token");
     const name = params.get("name");
     const email = params.get("email");
+    const picture = params.get("picture");
 
     if (token && email) {
       setSessionFromGoogle(
-        { name: name ?? "Google User", email, isGuest: false },
+        { name: name ?? "Google User", email, avatarUrl: picture ?? undefined, isGuest: false },
         token
       );
       router.replace("/tasks");

@@ -25,6 +25,9 @@ export class GoogleAuthGuard extends AuthGuard("google") {
       return { __handled: true } as TUser;
     }
 
+    // This attempt failed — but if a racing duplicate request already
+    // succeeded with this exact authorization code, reuse that success
+    // instead of showing the user a false "denied" error.
     if (code) {
       const cached = getCachedAuth(code);
       if (cached) {
@@ -45,6 +48,7 @@ export class GoogleAuthGuard extends AuthGuard("google") {
       token,
       name: user.name,
       email: user.email,
+      ...(user.picture ? { picture: user.picture } : {}),
     });
     this.safeRedirect(res, `${frontendUrl}/auth/callback?${params.toString()}`);
   }

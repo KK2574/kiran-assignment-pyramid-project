@@ -13,7 +13,7 @@ import { SeedService } from "./seed/seed.service";
       type: "sqlite",
       database: process.env.DB_PATH ?? "pyramid.sqlite",
       entities: [Task, Project],
-      synchronize: true,
+      synchronize: true, // fine for an assessment/dev DB; use migrations in real prod
     }),
     TasksModule,
     ProjectsModule,

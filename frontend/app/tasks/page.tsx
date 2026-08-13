@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
-import { Search, LayoutGrid, ListIcon, Plus, ChevronDown } from "lucide-react";
+import { Search, LayoutGrid, ListIcon, Plus, ChevronDown, Tag, GripVertical } from "lucide-react";
 import { useTaskStore, STATUS_LABEL, MEMBERS } from "@/lib/task-store";
 import { PriorityBadge, MemberAvatar } from "@/components/tasks/badges";
 import { ActionMenu } from "@/components/ui/action-menu";
@@ -249,7 +249,7 @@ function ListView({
 function BoardView({ tasks }: { tasks: Task[] }) {
   const { addTask, moveTask, duplicateTask, deleteTask } = useTaskStore();
   return (
-    <div className="grid grid-cols-[repeat(4,minmax(240px,1fr))] md:grid-cols-4 gap-4 overflow-x-auto pb-2">
+    <div className="grid grid-cols-[repeat(4,minmax(240px,1fr))] md:grid-cols-4 gap-4 overflow-x-auto pb-2 items-start">
       {STATUSES.map((status) => {
         const group = tasks.filter((t) => t.status === status);
         return (
@@ -260,12 +260,24 @@ function BoardView({ tasks }: { tasks: Task[] }) {
               const id = e.dataTransfer.getData("text/task-id");
               if (id) moveTask(id, status);
             }}
+            className="rounded-xl p-2"
+            style={{ background: "var(--bg-subtle)" }}
           >
-            <div className="flex items-center justify-between mb-2 px-1">
-              <span className="text-sm font-medium">{STATUS_LABEL[status]}</span>
-              <button onClick={() => addTask(status, "New Task")}>
-                <Plus size={14} />
-              </button>
+            <div className="flex items-center justify-between mb-2 px-1 pt-1">
+              <div className="flex items-center gap-1.5">
+                <GripVertical size={14} className="opacity-40" />
+                <span className="text-sm font-medium">{STATUS_LABEL[status]}</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <button onClick={() => addTask(status, "New Task")} className="p-0.5">
+                  <Plus size={14} />
+                </button>
+                <ActionMenu
+                  actions={[
+                    { label: "Clear column", danger: true, onClick: () => group.forEach((t) => deleteTask(t.id)) },
+                  ]}
+                />
+              </div>
             </div>
             <div className="flex flex-col gap-2">
               {group.map((task) => (
@@ -275,7 +287,7 @@ function BoardView({ tasks }: { tasks: Task[] }) {
                   draggable
                   onDragStart={(e) => e.dataTransfer.setData("text/task-id", task.id)}
                   className="rounded-lg border p-3 text-sm hover:shadow-sm transition"
-                  style={{ borderColor: "var(--border)" }}
+                  style={{ borderColor: "#e2e2e2", background: "var(--bg)" }}
                 >
                   <div className="flex items-center justify-between mb-2">
                     <span className="font-medium">{task.title}</span>
@@ -287,11 +299,18 @@ function BoardView({ tasks }: { tasks: Task[] }) {
                     />
                   </div>
                   <div className="flex items-center justify-between">
-                    <MemberAvatar member={MEMBERS.find((m) => m.id === task.memberIds[0])} />
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <MemberAvatar member={MEMBERS.find((m) => m.id === task.memberIds[0])} />
+                      {task.memberIds[0] && (
+                        <span className="text-xs truncate" style={{ color: "var(--text-muted)" }}>
+                          {MEMBERS.find((m) => m.id === task.memberIds[0])?.name}
+                        </span>
+                      )}
+                    </div>
                     {task.dueDate && (
                       <span
-                        className="text-xs px-1.5 py-0.5 rounded"
-                        style={{ background: "var(--bg-subtle)", color: "var(--text-muted)" }}
+                        className="text-xs px-1.5 py-0.5 rounded shrink-0"
+                        style={{ background: "#fee2e2", color: "#b91c1c" }}
                       >
                         {formatDate(task.dueDate)}
                       </span>
@@ -302,9 +321,10 @@ function BoardView({ tasks }: { tasks: Task[] }) {
                       {task.labels.slice(0, 2).map((l) => (
                         <span
                           key={l}
-                          className="text-[10px] px-1.5 py-0.5 rounded border"
-                          style={{ borderColor: "var(--border)", color: "var(--text-muted)" }}
+                          className="flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded"
+                          style={{ background: "var(--bg-subtle)", color: "var(--text-muted)" }}
                         >
+                          <Tag size={9} />
                           {l}
                         </span>
                       ))}

@@ -1,7 +1,7 @@
 "use client";
 
 import { create } from "zustand";
-import type { Task, Project, Member, Status, Priority } from "./types";
+import type { Task, Project, Member, Status, Priority, Update } from "./types";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
@@ -25,6 +25,7 @@ const seedTasks = (): Task[] => [
     labels: ["Design"],
     subtasks: [],
     comments: [],
+    updates: [],
   },
   {
     id: "t2",
@@ -36,6 +37,7 @@ const seedTasks = (): Task[] => [
     labels: ["Development"],
     subtasks: [],
     comments: [],
+    updates: [],
   },
   {
     id: "t3",
@@ -47,6 +49,7 @@ const seedTasks = (): Task[] => [
     labels: ["Testing"],
     subtasks: [],
     comments: [],
+    updates: [],
   },
   {
     id: "t4",
@@ -64,6 +67,7 @@ const seedTasks = (): Task[] => [
       { id: "s3", title: "Subtask 3", priority: "medium", dueDate: "2026-09-18" },
     ],
     comments: [{ id: "c1", authorId: "m1", text: "dsds", createdAt: new Date().toISOString() }],
+    updates: [],
   },
   {
     id: "t5",
@@ -75,6 +79,7 @@ const seedTasks = (): Task[] => [
     labels: ["Deployment"],
     subtasks: [],
     comments: [],
+    updates: [],
   },
   {
     id: "t6",
@@ -86,6 +91,7 @@ const seedTasks = (): Task[] => [
     labels: ["Testing", "Passed"],
     subtasks: [],
     comments: [],
+    updates: [],
   },
   {
     id: "t7",
@@ -97,6 +103,7 @@ const seedTasks = (): Task[] => [
     labels: ["Audit", "Scheduled"],
     subtasks: [],
     comments: [],
+    updates: [],
   },
 ];
 
@@ -144,6 +151,7 @@ export const useTaskStore = create<TaskState>((set, get) => ({
       labels: [],
       subtasks: [],
       comments: [],
+      updates: [],
     };
     set({ tasks: [...get().tasks, task] });
     fetch(`${API}/tasks`, {
@@ -153,7 +161,35 @@ export const useTaskStore = create<TaskState>((set, get) => ({
     }).catch(() => {});
   },
   updateTask: (id, patch) => {
-    set({ tasks: get().tasks.map((t) => (t.id === id ? { ...t, ...patch } : t)) });
+    const current = get().tasks.find((t) => t.id === id);
+    const newUpdates: Update[] = [];
+    if (current) {
+      if ("priority" in patch && patch.priority && patch.priority !== current.priority) {
+        newUpdates.push({
+          id: crypto.randomUUID(),
+          authorId: "me",
+          type: "priority_change",
+          text: `changed priority from ${PRIORITY_LABEL[current.priority]} to ${PRIORITY_LABEL[patch.priority]}`,
+          createdAt: new Date().toISOString(),
+        });
+      }
+      if ("status" in patch && patch.status && patch.status !== current.status) {
+        newUpdates.push({
+          id: crypto.randomUUID(),
+          authorId: "me",
+          type: "status_change",
+          text: `changed status from ${STATUS_LABEL[current.status]} to ${STATUS_LABEL[patch.status]}`,
+          createdAt: new Date().toISOString(),
+        });
+      }
+    }
+    set({
+      tasks: get().tasks.map((t) =>
+        t.id === id
+          ? { ...t, ...patch, updates: newUpdates.length ? [...newUpdates, ...t.updates] : t.updates }
+          : t
+      ),
+    });
     fetch(`${API}/tasks/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },

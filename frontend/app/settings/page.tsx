@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Search, User, Sun, Palette } from "lucide-react";
@@ -20,6 +20,22 @@ export default function SettingsPage() {
   const { user, updateProfile, logout } = useAuthStore();
   const { mode, setMode, accent, setAccent } = useThemeStore();
   const router = useRouter();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handlePhotoClick = () => fileInputRef.current?.click();
+
+  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === "string") {
+        updateProfile({ avatarUrl: reader.result });
+      }
+    };
+    reader.readAsDataURL(file);
+  };
 
   return (
     <div className="flex flex-col md:flex-row md:h-screen">
@@ -55,9 +71,35 @@ export default function SettingsPage() {
             <h1 className="text-lg font-semibold mb-4">Profile</h1>
             <div className="rounded-xl border divide-y" style={{ borderColor: "var(--border)" }}>
               <FieldRow label="Profile picture">
-                <div
-                  className="w-8 h-8 rounded-full"
-                  style={{ background: ACCENT_HEX[accent] }}
+                <button onClick={handlePhotoClick} className="relative group">
+                  {user?.avatarUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={user.avatarUrl}
+                      alt={user.name}
+                      className="w-8 h-8 rounded-full object-cover"
+                    />
+                  ) : (
+                    <div
+                      className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-medium"
+                      style={{ background: ACCENT_HEX[accent] }}
+                    >
+                      {user?.name?.[0]?.toUpperCase() ?? "?"}
+                    </div>
+                  )}
+                  <span
+                    className="absolute inset-0 rounded-full flex items-center justify-center text-[9px] opacity-0 group-hover:opacity-100 transition"
+                    style={{ background: "rgba(0,0,0,0.5)", color: "white" }}
+                  >
+                    Edit
+                  </span>
+                </button>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handlePhotoChange}
+                  className="hidden"
                 />
               </FieldRow>
               <FieldRow label="Email">

@@ -17,7 +17,10 @@ export function ActionMenu({ actions }: { actions: MenuAction[] }) {
   const btnRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => setMounted(true), []);
+  useEffect(() => {
+    // Standard client-mount-detection pattern — portal must not render during SSR.
+    setMounted(true); // eslint-disable-line react-hooks/set-state-in-effect
+  }, []);
 
   useLayoutEffect(() => {
     if (!open || !btnRef.current) return;

@@ -23,6 +23,20 @@ export interface Comment {
   createdAt: string;
 }
 
+export interface Update {
+  id: string;
+  authorId: string;
+  type: "priority_change" | "status_change" | "generic";
+  text: string;
+  createdAt: string;
+}
+
+export interface Resource {
+  id: string;
+  title: string;
+  url: string;
+}
+
 export interface Task {
   id: string;
   title: string;
@@ -35,6 +49,8 @@ export interface Task {
   projectId?: string;
   subtasks: Subtask[];
   comments: Comment[];
+  updates: Update[];
+  resources?: Resource[];
 }
 
 export interface Project {

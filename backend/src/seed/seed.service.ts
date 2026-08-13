@@ -2,6 +2,10 @@ import { Injectable, Logger, OnModuleInit } from "@nestjs/common";
 import { TasksService } from "../tasks/tasks.service";
 import { ProjectsService } from "../projects/projects.service";
 
+// Auto-seeds demo data on boot if the database is empty. This matters
+// specifically because free-tier hosts (e.g. Render's free plan) reset
+// the SQLite file on every redeploy/restart — without this, the app would
+// come back up empty every time instead of showing the demo content.
 @Injectable()
 export class SeedService implements OnModuleInit {
   private readonly logger = new Logger(SeedService.name);

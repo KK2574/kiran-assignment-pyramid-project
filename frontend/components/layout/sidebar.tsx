@@ -59,10 +59,21 @@ export function Sidebar() {
           onClick={() => setMenuOpen((v) => !v)}
           className="w-full flex items-center gap-2 px-2 py-2 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 text-left"
         >
-          <div
-            className="w-7 h-7 rounded-full shrink-0"
-            style={{ background: accent === "black" ? "#171717" : ACCENT_HEX[accent] }}
-          />
+          {user?.avatarUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={user.avatarUrl}
+              alt={user.name}
+              className="w-7 h-7 rounded-full shrink-0 object-cover"
+            />
+          ) : (
+            <div
+              className="w-7 h-7 rounded-full shrink-0 flex items-center justify-center text-white text-xs font-medium"
+              style={{ background: accent === "black" ? "#171717" : ACCENT_HEX[accent] }}
+            >
+              {user?.name?.[0]?.toUpperCase() ?? "?"}
+            </div>
+          )}
           <span className="font-medium text-sm flex-1 truncate">{user?.name ?? "Guest"}</span>
           <ChevronsUpDown size={14} className="opacity-50" />
         </button>
