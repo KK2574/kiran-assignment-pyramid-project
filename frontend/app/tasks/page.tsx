@@ -129,6 +129,7 @@ export default function TasksPage() {
           updateTask={updateTask}
           duplicateTask={duplicateTask}
           deleteTask={deleteTask}
+          addTask={addTask}
         />
       ) : (
         <BoardView tasks={filtered} />
@@ -143,12 +144,14 @@ function ListView({
   updateTask,
   duplicateTask,
   deleteTask,
+  addTask,
 }: {
   tasks: Task[];
   fields: Set<FieldKey>;
   updateTask: (id: string, patch: Partial<Task>) => void;
   duplicateTask: (id: string) => void;
   deleteTask: (id: string) => void;
+  addTask: (status: Status, title: string) => void;
 }) {
   return (
     <div className="flex flex-col gap-6">
@@ -186,8 +189,7 @@ function ListView({
                 <div className="px-4 py-6 text-sm text-center" style={{ color: "var(--text-muted)" }}>
                   No tasks yet
                 </div>
-              )}
-              {group.map((task) => (
+              )}              {group.map((task) => (
                 <Link
                   key={task.id}
                   href={`/tasks/${task.id}`}
@@ -237,6 +239,13 @@ function ListView({
                   />
                 </Link>
               ))}
+              <button
+                onClick={() => addTask(status, "New Task")}
+                className="flex items-center gap-1 text-xs text-left px-4 py-2.5 border-t w-full"
+                style={{ borderColor: "var(--border)", color: "var(--text-muted)" }}
+              >
+                <Plus size={12} /> Add Task
+              </button>
               </div>
             </div>
           </div>
