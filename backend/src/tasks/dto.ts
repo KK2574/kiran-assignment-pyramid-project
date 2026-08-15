@@ -2,10 +2,10 @@ import { IsArray, IsIn, IsOptional, IsString } from "class-validator";
 
 export class CreateTaskDto {
   @IsString()
-  title: string;
+  title!: string;
 
   @IsIn(["todo", "doing", "completed", "on_hold"])
-  status: string;
+  status!: string;
 
   @IsOptional()
   @IsIn(["no_priority", "low", "medium", "high", "urgent"])
@@ -34,4 +34,6 @@ export class UpdateTaskDto {
   @IsOptional() @IsArray() labels?: string[];
   @IsOptional() @IsArray() subtasks?: any[];
   @IsOptional() @IsArray() comments?: any[];
+  @IsOptional() @IsArray() updates?: any[];
+  @IsOptional() @IsArray() resources?: any[];
 }

@@ -18,40 +18,60 @@ export interface Comment {
   createdAt: string;
 }
 
+export interface Update {
+  id: string;
+  authorId: string;
+  type: "priority_change" | "status_change" | "generic";
+  text: string;
+  createdAt: string;
+}
+
+export interface Resource {
+  id: string;
+  title: string;
+  url: string;
+}
+
 @Entity()
 export class Task {
   @PrimaryGeneratedColumn("uuid")
-  id: string;
+  id!: string;
 
   @Column()
-  title: string;
+  title!: string;
 
   @Column({ nullable: true })
   description?: string;
 
   @Column({ default: "todo" })
-  status: Status;
+  status!: Status;
 
   @Column({ default: "no_priority" })
-  priority: Priority;
+  priority!: Priority;
 
   // SQLite has no native array/json column type in older drivers, so we
   // store these as JSON text and (de)serialize via TypeORM's transformer.
   @Column({ type: "simple-json", default: "[]" })
-  memberIds: string[];
+  memberIds!: string[];
 
   @Column({ nullable: true })
   dueDate?: string;
 
   @Column({ type: "simple-json", default: "[]" })
-  labels: string[];
+  labels!: string[];
 
   @Column({ nullable: true })
   projectId?: string;
 
   @Column({ type: "simple-json", default: "[]" })
-  subtasks: Subtask[];
+  subtasks!: Subtask[];
 
   @Column({ type: "simple-json", default: "[]" })
-  comments: Comment[];
+  comments!: Comment[];
+
+  @Column({ type: "simple-json", default: "[]" })
+  updates!: Update[];
+
+  @Column({ type: "simple-json", default: "[]" })
+  resources!: Resource[];
 }

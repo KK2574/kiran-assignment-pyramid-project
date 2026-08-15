@@ -111,6 +111,8 @@ interface TaskState {
   tasks: Task[];
   projects: Project[];
   hydrated: boolean;
+  apiConnected: boolean;
+  saveError: string | null;
   fetchAll: () => Promise<void>;
   addTask: (status: Status, title: string) => void;
   updateTask: (id: string, patch: Partial<Task>) => void;
@@ -120,6 +122,27 @@ interface TaskState {
   addProject: (name: string) => void;
   updateProject: (id: string, patch: Partial<Project>) => void;
   deleteProject: (id: string) => void;
+  dismissSaveError: () => void;
+}
+
+// Wraps every write request so failures are surfaced instead of silently
+// swallowed. Without this, a broken NEXT_PUBLIC_API_URL / CORS / down
+// backend would make every edit "work" locally and then vanish on refresh,
+// with zero indication anything was wrong.
+function persist(url: string, init: RequestInit, set: (patch: Partial<TaskState>) => void) {
+  fetch(url, init)
+    .then((res) => {
+      if (!res.ok) throw new Error(`${init.method ?? "GET"} ${url} → ${res.status}`);
+      set({ apiConnected: true, saveError: null });
+    })
+    .catch((err) => {
+      console.error("Pyramid: failed to save to backend —", err);
+      set({
+        apiConnected: false,
+        saveError:
+          "Changes aren't being saved to the server (API unreachable). They'll be lost on refresh.",
+      });
+    });
 }
 
 export const useTaskStore = create<TaskState>((set, get) => ({
@@ -130,15 +153,28 @@ export const useTaskStore = create<TaskState>((set, get) => ({
     { id: "p3", name: "Test Payment Gateway", priority: "medium", dueDate: "2026-09-18" },
   ],
   hydrated: false,
+  apiConnected: true,
+  saveError: null,
+  dismissSaveError: () => set({ saveError: null }),
   fetchAll: async () => {
     try {
       const res = await fetch(`${API}/tasks`);
       if (!res.ok) throw new Error("no api");
-      const tasks = await res.json();
-      set({ tasks, hydrated: true });
-    } catch {
-      // API not running (e.g. static preview) — fall back to local seed data
-      set({ tasks: seedTasks(), hydrated: true });
+      const raw: Task[] = await res.json();
+      // Defensive: guards against rows created before the `updates`/`resources`
+      // columns existed on the backend (or any other backend/schema drift).
+      const tasks = raw.map((t) => ({ ...t, updates: t.updates ?? [], resources: t.resources ?? [] }));
+      set({ tasks, hydrated: true, apiConnected: true, saveError: null });
+    } catch (err) {
+      // API not running (e.g. static preview) — fall back to local seed data,
+      // but make it loud: this app is NOT persisting anything right now.
+      console.error("Pyramid: could not reach backend at", API, "— using local demo data only.", err);
+      set({
+        tasks: seedTasks(),
+        hydrated: true,
+        apiConnected: false,
+        saveError: `Can't reach the API at ${API}. Showing local demo data — nothing you do will be saved.`,
+      });
     }
   },
   addTask: (status, title) => {
@@ -154,11 +190,11 @@ export const useTaskStore = create<TaskState>((set, get) => ({
       updates: [],
     };
     set({ tasks: [...get().tasks, task] });
-    fetch(`${API}/tasks`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(task),
-    }).catch(() => {});
+    persist(
+      `${API}/tasks`,
+      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(task) },
+      set
+    );
   },
   updateTask: (id, patch) => {
     const current = get().tasks.find((t) => t.id === id);
@@ -186,20 +222,24 @@ export const useTaskStore = create<TaskState>((set, get) => ({
     set({
       tasks: get().tasks.map((t) =>
         t.id === id
-          ? { ...t, ...patch, updates: newUpdates.length ? [...newUpdates, ...t.updates] : t.updates }
+          ? {
+              ...t,
+              ...patch,
+              updates: newUpdates.length ? [...newUpdates, ...(t.updates ?? [])] : (t.updates ?? []),
+            }
           : t
       ),
     });
-    fetch(`${API}/tasks/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(patch),
-    }).catch(() => {});
+    persist(
+      `${API}/tasks/${id}`,
+      { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(patch) },
+      set
+    );
   },
   moveTask: (id, status) => get().updateTask(id, { status }),
   deleteTask: (id) => {
     set({ tasks: get().tasks.filter((t) => t.id !== id) });
-    fetch(`${API}/tasks/${id}`, { method: "DELETE" }).catch(() => {});
+    persist(`${API}/tasks/${id}`, { method: "DELETE" }, set);
   },
   duplicateTask: (id) => {
     const original = get().tasks.find((t) => t.id === id);
@@ -210,32 +250,32 @@ export const useTaskStore = create<TaskState>((set, get) => ({
       title: `${original.title} (copy)`,
     };
     set({ tasks: [...get().tasks, copy] });
-    fetch(`${API}/tasks`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(copy),
-    }).catch(() => {});
+    persist(
+      `${API}/tasks`,
+      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(copy) },
+      set
+    );
   },
   addProject: (name) => {
     const project: Project = { id: `p${Date.now()}`, name, priority: "no_priority" };
     set({ projects: [...get().projects, project] });
-    fetch(`${API}/projects`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(project),
-    }).catch(() => {});
+    persist(
+      `${API}/projects`,
+      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(project) },
+      set
+    );
   },
   updateProject: (id, patch) => {
     set({ projects: get().projects.map((p) => (p.id === id ? { ...p, ...patch } : p)) });
-    fetch(`${API}/projects/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(patch),
-    }).catch(() => {});
+    persist(
+      `${API}/projects/${id}`,
+      { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(patch) },
+      set
+    );
   },
   deleteProject: (id) => {
     set({ projects: get().projects.filter((p) => p.id !== id) });
-    fetch(`${API}/projects/${id}`, { method: "DELETE" }).catch(() => {});
+    persist(`${API}/projects/${id}`, { method: "DELETE" }, set);
   },
 }));
 

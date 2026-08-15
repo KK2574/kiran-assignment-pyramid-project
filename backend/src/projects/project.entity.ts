@@ -5,13 +5,13 @@ export type Priority = "no_priority" | "low" | "medium" | "high" | "urgent";
 @Entity()
 export class Project {
   @PrimaryGeneratedColumn("uuid")
-  id: string;
+  id!: string;
 
   @Column()
-  name: string;
+  name!: string;
 
   @Column({ default: "no_priority" })
-  priority: Priority;
+  priority!: Priority;
 
   @Column({ nullable: true })
   leadId?: string;
