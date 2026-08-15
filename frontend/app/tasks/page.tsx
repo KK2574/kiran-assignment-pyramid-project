@@ -132,7 +132,7 @@ export default function TasksPage() {
           addTask={addTask}
         />
       ) : (
-        <BoardView tasks={filtered} />
+        <BoardView tasks={filtered} fields={visibleFields} />
       )}
     </div>
   );
@@ -255,7 +255,7 @@ function ListView({
   );
 }
 
-function BoardView({ tasks }: { tasks: Task[] }) {
+function BoardView({ tasks, fields }: { tasks: Task[]; fields: Set<FieldKey> }) {
   const { addTask, moveTask, duplicateTask, deleteTask } = useTaskStore();
   return (
     <div className="grid grid-cols-[repeat(4,minmax(240px,1fr))] md:grid-cols-4 gap-4 overflow-x-auto pb-2 items-start">
@@ -308,15 +308,17 @@ function BoardView({ tasks }: { tasks: Task[] }) {
                     />
                   </div>
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-1.5 min-w-0">
-                      <MemberAvatar member={MEMBERS.find((m) => m.id === task.memberIds[0])} />
-                      {task.memberIds[0] && (
-                        <span className="text-xs truncate" style={{ color: "var(--text-muted)" }}>
-                          {MEMBERS.find((m) => m.id === task.memberIds[0])?.name}
-                        </span>
-                      )}
-                    </div>
-                    {task.dueDate && (
+                    {fields.has("members") && (
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <MemberAvatar member={MEMBERS.find((m) => m.id === task.memberIds[0])} />
+                        {task.memberIds[0] && (
+                          <span className="text-xs truncate" style={{ color: "var(--text-muted)" }}>
+                            {MEMBERS.find((m) => m.id === task.memberIds[0])?.name}
+                          </span>
+                        )}
+                      </div>
+                    )}
+                    {fields.has("dueDate") && task.dueDate && (
                       <span
                         className="text-xs px-1.5 py-0.5 rounded shrink-0"
                         style={{ background: "#fee2e2", color: "#b91c1c" }}
@@ -325,7 +327,22 @@ function BoardView({ tasks }: { tasks: Task[] }) {
                       </span>
                     )}
                   </div>
-                  {task.labels.length > 0 && (
+                  {fields.has("priority") && (
+                    <div className="mt-2">
+                      <PriorityBadge priority={task.priority} />
+                    </div>
+                  )}
+                  {fields.has("status") && (
+                    <div className="mt-2 text-xs" style={{ color: "var(--text-muted)" }}>
+                      {STATUS_LABEL[task.status]}
+                    </div>
+                  )}
+                  {fields.has("reporter") && (
+                    <div className="mt-2 text-xs" style={{ color: "var(--text-muted)" }}>
+                      Reporter: —
+                    </div>
+                  )}
+                  {fields.has("labels") && task.labels.length > 0 && (
                     <div className="flex flex-wrap gap-1 mt-2">
                       {task.labels.slice(0, 2).map((l) => (
                         <span
