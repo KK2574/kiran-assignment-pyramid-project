@@ -129,20 +129,50 @@ interface TaskState {
 // swallowed. Without this, a broken NEXT_PUBLIC_API_URL / CORS / down
 // backend would make every edit "work" locally and then vanish on refresh,
 // with zero indication anything was wrong.
-function persist(url: string, init: RequestInit, set: (patch: Partial<TaskState>) => void) {
-  fetch(url, init)
-    .then((res) => {
+//
+// Also retries with real patience before giving up: free-tier hosts (e.g.
+// Render) spin down when idle, and a write that lands right as the server
+// is waking up would otherwise fail immediately on the very first try.
+//
+// Returns the parsed JSON response body on success (or null on failure), so
+// callers that create a resource can reconcile a temporary client-side id
+// with the real one the backend/database actually assigned.
+async function persist(
+  url: string,
+  init: RequestInit,
+  set: (patch: Partial<TaskState>) => void
+): Promise<any | null> {
+  const attempt = async (timeoutMs: number) => {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const res = await fetch(url, { ...init, signal: controller.signal });
       if (!res.ok) throw new Error(`${init.method ?? "GET"} ${url} → ${res.status}`);
-      set({ apiConnected: true, saveError: null });
-    })
-    .catch((err) => {
-      console.error("Pyramid: failed to save to backend —", err);
-      set({
-        apiConnected: false,
-        saveError:
-          "Changes aren't being saved to the server (API unreachable). They'll be lost on refresh.",
-      });
+      return res;
+    } finally {
+      clearTimeout(timer);
+    }
+  };
+
+  try {
+    let res: Response;
+    try {
+      res = await attempt(8_000);
+    } catch {
+      res = await attempt(60_000); // likely a cold start — give it one patient retry
+    }
+    set({ apiConnected: true, saveError: null });
+    const text = await res.text();
+    return text ? JSON.parse(text) : null;
+  } catch (err) {
+    console.error("Pyramid: failed to save to backend —", err);
+    set({
+      apiConnected: false,
+      saveError:
+        "Changes aren't being saved to the server (API unreachable). They'll be lost on refresh.",
     });
+    return null;
+  }
 }
 
 export const useTaskStore = create<TaskState>((set, get) => ({
@@ -201,8 +231,9 @@ export const useTaskStore = create<TaskState>((set, get) => ({
     }
   },
   addTask: (status, title) => {
+    const tempId = `t${Date.now()}`;
     const task: Task = {
-      id: `t${Date.now()}`,
+      id: tempId,
       title,
       status,
       priority: "no_priority",
@@ -217,7 +248,16 @@ export const useTaskStore = create<TaskState>((set, get) => ({
       `${API}/tasks`,
       { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(task) },
       set
-    );
+    ).then((created) => {
+      // The backend assigns its own real id (TypeORM's auto-generated UUID
+      // ignores whatever id we sent) — swap our temp id for the real one so
+      // later edits (PATCH/DELETE) target a row that actually exists.
+      if (created?.id && created.id !== tempId) {
+        set({
+          tasks: get().tasks.map((t) => (t.id === tempId ? { ...t, ...created } : t)),
+        });
+      }
+    });
   },
   updateTask: (id, patch) => {
     const current = get().tasks.find((t) => t.id === id);
@@ -267,9 +307,10 @@ export const useTaskStore = create<TaskState>((set, get) => ({
   duplicateTask: (id) => {
     const original = get().tasks.find((t) => t.id === id);
     if (!original) return;
+    const tempId = `t${Date.now()}`;
     const copy: Task = {
       ...original,
-      id: `t${Date.now()}`,
+      id: tempId,
       title: `${original.title} (copy)`,
     };
     set({ tasks: [...get().tasks, copy] });
@@ -277,16 +318,29 @@ export const useTaskStore = create<TaskState>((set, get) => ({
       `${API}/tasks`,
       { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(copy) },
       set
-    );
+    ).then((created) => {
+      if (created?.id && created.id !== tempId) {
+        set({
+          tasks: get().tasks.map((t) => (t.id === tempId ? { ...t, ...created } : t)),
+        });
+      }
+    });
   },
   addProject: (name) => {
-    const project: Project = { id: `p${Date.now()}`, name, priority: "no_priority" };
+    const tempId = `p${Date.now()}`;
+    const project: Project = { id: tempId, name, priority: "no_priority" };
     set({ projects: [...get().projects, project] });
     persist(
       `${API}/projects`,
       { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(project) },
       set
-    );
+    ).then((created) => {
+      if (created?.id && created.id !== tempId) {
+        set({
+          projects: get().projects.map((p) => (p.id === tempId ? { ...p, ...created } : p)),
+        });
+      }
+    });
   },
   updateProject: (id, patch) => {
     set({ projects: get().projects.map((p) => (p.id === id ? { ...p, ...patch } : p)) });
