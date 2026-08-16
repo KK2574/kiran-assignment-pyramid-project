@@ -157,10 +157,33 @@ export const useTaskStore = create<TaskState>((set, get) => ({
   saveError: null,
   dismissSaveError: () => set({ saveError: null }),
   fetchAll: async () => {
+    // Free-tier hosts (e.g. Render) spin down when idle and can take 30-60s
+    // to wake on the first request. Retry with real patience before giving
+    // up and falling back to local demo data, instead of failing on the
+    // very first attempt while the server is still waking up.
+    const attempt = async (timeoutMs: number) => {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), timeoutMs);
+      try {
+        const res = await fetch(`${API}/tasks`, { signal: controller.signal });
+        clearTimeout(timer);
+        if (!res.ok) throw new Error(`GET /tasks → ${res.status}`);
+        return (await res.json()) as Task[];
+      } catch (err) {
+        clearTimeout(timer);
+        throw err;
+      }
+    };
+
     try {
-      const res = await fetch(`${API}/tasks`);
-      if (!res.ok) throw new Error("no api");
-      const raw: Task[] = await res.json();
+      let raw: Task[];
+      try {
+        raw = await attempt(8_000);
+      } catch {
+        // First attempt failed fast — likely a cold start. Give it one more,
+        // much longer, try before we conclude the API is really unreachable.
+        raw = await attempt(60_000);
+      }
       // Defensive: guards against rows created before the `updates`/`resources`
       // columns existed on the backend (or any other backend/schema drift).
       const tasks = raw.map((t) => ({ ...t, updates: t.updates ?? [], resources: t.resources ?? [] }));
