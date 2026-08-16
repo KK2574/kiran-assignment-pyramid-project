@@ -9,12 +9,19 @@ function LoginForm() {
   const params = useSearchParams();
   const { loginAsGuest } = useAuthStore();
   const [loading, setLoading] = useState(false);
+  const [slow, setSlow] = useState(false);
 
   const authFailed = params.get("error") === "google_auth_failed";
 
   const handleGuest = async () => {
     setLoading(true);
+    setSlow(false);
+    // Free-tier backends often need 30-60s to wake up from a cold start —
+    // surface that after a few seconds instead of leaving the button
+    // looking frozen with no explanation.
+    const slowTimer = setTimeout(() => setSlow(true), 4000);
     await loginAsGuest();
+    clearTimeout(slowTimer);
     router.push("/tasks");
   };
 
@@ -53,6 +60,11 @@ function LoginForm() {
         >
           {loading ? "Signing in…" : "Continue as Guest"}
         </button>
+        {slow && (
+          <p className="text-xs text-center -mt-1 mb-2.5" style={{ color: "var(--text-muted)" }}>
+            Waking up the server — this can take up to a minute on a cold start.
+          </p>
+        )}
 
         {/* Real OAuth redirect — must be a full page navigation, not a fetch,
             since Google needs to show its own consent screen. */}
@@ -87,17 +99,17 @@ function PyramidLogo({ size = 14 }: { size?: number }) {
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
       {/* outer silhouette */}
       <path
-        d="M12 3.3L4.6 15.8L16.4 18.3L12 3.3Z"
+        d="M12 3.5L4.8 16.2L16.8 18.5L12 3.5Z"
         stroke="white"
-        strokeWidth="1.9"
+        strokeWidth="2.1"
         strokeLinejoin="round"
         strokeLinecap="round"
       />
-      {/* inner face-split edge, apex to a base point left of center */}
+      {/* inner edge: apex down to a point on the base, giving the left face */}
       <path
-        d="M12 3.3L8.7 16.1"
+        d="M12 3.5L9 16.6"
         stroke="white"
-        strokeWidth="1.7"
+        strokeWidth="1.9"
         strokeLinejoin="round"
         strokeLinecap="round"
       />

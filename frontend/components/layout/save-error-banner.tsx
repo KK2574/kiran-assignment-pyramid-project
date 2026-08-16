@@ -2,13 +2,22 @@
 
 import { AlertTriangle, X } from "lucide-react";
 import { useTaskStore } from "@/lib/task-store";
+import { useAuthStore } from "@/lib/auth-store";
 
 // Surfaces backend connectivity/save failures that would otherwise be
-// silently swallowed by task-store's fetch calls — without this, edits can
-// "work" visually and then vanish on refresh with zero indication why.
+// silently swallowed by task-store/auth-store's fetch calls — without this,
+// edits (or an entire guest session) can "work" visually and then vanish on
+// refresh with zero indication why.
 export function SaveErrorBanner() {
   const { saveError, dismissSaveError } = useTaskStore();
-  if (!saveError) return null;
+  const { authError, dismissAuthError } = useAuthStore();
+  const message = saveError ?? authError;
+  if (!message) return null;
+
+  const dismiss = () => {
+    dismissSaveError();
+    dismissAuthError();
+  };
 
   return (
     <div
@@ -17,8 +26,8 @@ export function SaveErrorBanner() {
       role="alert"
     >
       <AlertTriangle size={16} className="shrink-0 mt-0.5" />
-      <span className="flex-1">{saveError}</span>
-      <button onClick={dismissSaveError} aria-label="Dismiss" className="shrink-0 opacity-70 hover:opacity-100">
+      <span className="flex-1">{message}</span>
+      <button onClick={dismiss} aria-label="Dismiss" className="shrink-0 opacity-70 hover:opacity-100">
         <X size={14} />
       </button>
     </div>
