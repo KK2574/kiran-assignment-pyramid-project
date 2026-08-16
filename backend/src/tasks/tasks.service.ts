@@ -28,6 +28,7 @@ export class TasksService {
       memberIds: dto.memberIds ?? [],
       dueDate: dto.dueDate,
       labels: dto.labels ?? [],
+      projectId: dto.projectId,
       subtasks: [],
       comments: [],
     });

@@ -114,7 +114,7 @@ interface TaskState {
   apiConnected: boolean;
   saveError: string | null;
   fetchAll: () => Promise<void>;
-  addTask: (status: Status, title: string) => void;
+  addTask: (status: Status, title: string, extra?: Partial<Task>) => void;
   updateTask: (id: string, patch: Partial<Task>) => void;
   moveTask: (id: string, status: Status) => void;
   deleteTask: (id: string) => void;
@@ -230,7 +230,7 @@ export const useTaskStore = create<TaskState>((set, get) => ({
       });
     }
   },
-  addTask: (status, title) => {
+  addTask: (status, title, extra) => {
     const tempId = `t${Date.now()}`;
     const task: Task = {
       id: tempId,
@@ -242,6 +242,7 @@ export const useTaskStore = create<TaskState>((set, get) => ({
       subtasks: [],
       comments: [],
       updates: [],
+      ...extra,
     };
     set({ tasks: [...get().tasks, task] });
     persist(

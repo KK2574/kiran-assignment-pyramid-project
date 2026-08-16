@@ -22,6 +22,10 @@ export class CreateTaskDto {
   @IsOptional()
   @IsArray()
   labels?: string[];
+
+  @IsOptional()
+  @IsString()
+  projectId?: string;
 }
 
 export class UpdateTaskDto {
@@ -32,6 +36,7 @@ export class UpdateTaskDto {
   @IsOptional() @IsArray() memberIds?: string[];
   @IsOptional() @IsString() dueDate?: string;
   @IsOptional() @IsArray() labels?: string[];
+  @IsOptional() @IsString() projectId?: string;
   @IsOptional() @IsArray() subtasks?: any[];
   @IsOptional() @IsArray() comments?: any[];
   @IsOptional() @IsArray() updates?: any[];

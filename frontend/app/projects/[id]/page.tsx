@@ -44,13 +44,10 @@ export default function ProjectDetailPage() {
   }
 
   const handleAddTask = () => {
-    addTask("todo", "New Task");
-    // Newly added task won't have projectId set yet — quick follow-up patch
-    // targets the most recently created task in the store.
-    setTimeout(() => {
-      const latest = useTaskStore.getState().tasks.at(-1);
-      if (latest) updateTask(latest.id, { projectId: project.id });
-    }, 0);
+    // Pass projectId as part of the initial create instead of a follow-up
+    // patch — a follow-up patch would race the temp-id → real-id swap that
+    // happens once the backend confirms creation, and could 404.
+    addTask("todo", "New Task", { projectId: project.id });
   };
 
   return (
