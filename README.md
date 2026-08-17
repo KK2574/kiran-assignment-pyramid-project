@@ -95,4 +95,6 @@ The frontend works standalone too — if it can't reach the API it falls back to
 
 ## Part 2 — AbleSpace Product Analysis
 
-See `PART2_ABLESPACE_ANALYSIS.md` in this repo for the write-up on the Caseload → Take Data workflow.
+Screen recording: **[add your Google Drive link here]**
+
+See `PART2_ABLESPACE_ANALYSIS.md` in this repo for a written companion covering the same Caseload → Take Data workflow and UX observations.
