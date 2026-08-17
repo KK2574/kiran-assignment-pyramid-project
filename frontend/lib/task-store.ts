@@ -199,33 +199,38 @@ export const useTaskStore = create<TaskState>((set, get) => ({
     // to wake on the first request. Retry with real patience before giving
     // up and falling back to local demo data, instead of failing on the
     // very first attempt while the server is still waking up.
-    const attempt = async (timeoutMs: number) => {
+    const attempt = async (url: string, timeoutMs: number) => {
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), timeoutMs);
       try {
-        const res = await fetch(`${API}/tasks`, { signal: controller.signal });
+        const res = await fetch(url, { signal: controller.signal });
         clearTimeout(timer);
-        if (!res.ok) throw new Error(`GET /tasks → ${res.status}`);
-        return (await res.json()) as Task[];
+        if (!res.ok) throw new Error(`GET ${url} → ${res.status}`);
+        return await res.json();
       } catch (err) {
         clearTimeout(timer);
         throw err;
       }
     };
-
-    try {
-      let raw: Task[];
+    const fetchWithRetry = async (url: string) => {
       try {
-        raw = await attempt(8_000);
+        return await attempt(url, 8_000);
       } catch {
         // First attempt failed fast — likely a cold start. Give it one more,
         // much longer, try before we conclude the API is really unreachable.
-        raw = await attempt(60_000);
+        return await attempt(url, 60_000);
       }
+    };
+
+    try {
+      const [rawTasks, rawProjects] = await Promise.all([
+        fetchWithRetry(`${API}/tasks`) as Promise<Task[]>,
+        fetchWithRetry(`${API}/projects`) as Promise<Project[]>,
+      ]);
       // Defensive: guards against rows created before the `updates`/`resources`
       // columns existed on the backend (or any other backend/schema drift).
-      const tasks = raw.map((t) => ({ ...t, updates: t.updates ?? [], resources: t.resources ?? [] }));
-      set({ tasks, hydrated: true, apiConnected: true, saveError: null });
+      const tasks = rawTasks.map((t) => ({ ...t, updates: t.updates ?? [], resources: t.resources ?? [] }));
+      set({ tasks, projects: rawProjects, hydrated: true, apiConnected: true, saveError: null });
     } catch (err) {
       // API not running (e.g. static preview) — fall back to local seed data,
       // but make it loud: this app is NOT persisting anything right now.
