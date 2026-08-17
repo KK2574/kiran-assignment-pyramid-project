@@ -113,6 +113,13 @@ interface TaskState {
   hydrated: boolean;
   apiConnected: boolean;
   saveError: string | null;
+  // Maps a temporary client-generated id (used the instant something is
+  // created, before the backend confirms) to the real id the backend
+  // assigned. Detail pages consult this so that if you navigate to
+  // /tasks/<tempId> or /projects/<tempId> right after creating something,
+  // the page can redirect itself to the real id once reconciliation
+  // completes, instead of silently rendering "not found".
+  idAliases: Record<string, string>;
   fetchAll: () => Promise<void>;
   addTask: (status: Status, title: string, extra?: Partial<Task>) => void;
   updateTask: (id: string, patch: Partial<Task>) => void;
@@ -184,6 +191,7 @@ export const useTaskStore = create<TaskState>((set, get) => ({
   ],
   hydrated: false,
   apiConnected: true,
+  idAliases: {},
   saveError: null,
   dismissSaveError: () => set({ saveError: null }),
   fetchAll: async () => {
@@ -256,6 +264,7 @@ export const useTaskStore = create<TaskState>((set, get) => ({
       if (created?.id && created.id !== tempId) {
         set({
           tasks: get().tasks.map((t) => (t.id === tempId ? { ...t, ...created } : t)),
+          idAliases: { ...get().idAliases, [tempId]: created.id },
         });
       }
     });
@@ -323,6 +332,7 @@ export const useTaskStore = create<TaskState>((set, get) => ({
       if (created?.id && created.id !== tempId) {
         set({
           tasks: get().tasks.map((t) => (t.id === tempId ? { ...t, ...created } : t)),
+          idAliases: { ...get().idAliases, [tempId]: created.id },
         });
       }
     });
@@ -339,6 +349,7 @@ export const useTaskStore = create<TaskState>((set, get) => ({
       if (created?.id && created.id !== tempId) {
         set({
           projects: get().projects.map((p) => (p.id === tempId ? { ...p, ...created } : p)),
+          idAliases: { ...get().idAliases, [tempId]: created.id },
         });
       }
     });

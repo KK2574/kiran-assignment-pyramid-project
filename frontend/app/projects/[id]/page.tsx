@@ -19,6 +19,7 @@ export default function ProjectDetailPage() {
     tasks,
     hydrated,
     fetchAll,
+    idAliases,
     updateProject,
     deleteProject,
     addTask,
@@ -33,12 +34,23 @@ export default function ProjectDetailPage() {
   }, [hydrated, fetchAll]);
 
   const project = projects.find((p) => p.id === id);
+
+  // If this id was a temp id that's since been reconciled to a real backend
+  // id (e.g. we navigated here the instant after creating the project,
+  // before its POST resolved), redirect to the real url instead of showing
+  // a false "not found".
+  useEffect(() => {
+    if (!project && id && idAliases[id]) {
+      router.replace(`/projects/${idAliases[id]}`);
+    }
+  }, [project, id, idAliases, router]);
+
   const linkedTasks = tasks.filter((t) => t.projectId === id);
 
   if (!project) {
     return (
       <div className="p-6 text-sm" style={{ color: "var(--text-muted)" }}>
-        {hydrated ? "Project not found." : "Loading…"}
+        {hydrated ? (id && idAliases[id] ? "Redirecting…" : "Project not found.") : "Loading…"}
       </div>
     );
   }
@@ -62,6 +74,7 @@ export default function ProjectDetailPage() {
 
       <div className="flex items-start justify-between mb-6">
         <input
+          key={project.id}
           defaultValue={project.name}
           onBlur={(e) => updateProject(project.id, { name: e.target.value || "Untitled" })}
           className="text-2xl font-semibold bg-transparent outline-none flex-1"

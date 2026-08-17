@@ -15,7 +15,7 @@ const AVAILABLE_LABELS = ["Research", "Design", "Development", "Testing", "Deplo
 export default function TaskDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
-  const { tasks, hydrated, fetchAll, updateTask, deleteTask, duplicateTask } = useTaskStore();
+  const { tasks, hydrated, fetchAll, idAliases, updateTask, deleteTask, duplicateTask } = useTaskStore();
   const [priorityOpen, setPriorityOpen] = useState(false);
   const [labelsOpen, setLabelsOpen] = useState(false);
   const [comment, setComment] = useState("");
@@ -28,7 +28,24 @@ export default function TaskDetailPage() {
   }, [hydrated, fetchAll]);
 
   const task = tasks.find((t) => t.id === id);
-  if (!task) return <div className="p-6 text-sm" style={{ color: "var(--text-muted)" }}>Loading…</div>;
+
+  // If this id was a temp id that's since been reconciled to a real backend
+  // id (e.g. we navigated here the instant after creating the task, before
+  // its POST resolved), redirect to the real url instead of showing a
+  // false "not found" / stuck-on-"Loading…" state.
+  useEffect(() => {
+    if (!task && id && idAliases[id]) {
+      router.replace(`/tasks/${idAliases[id]}`);
+    }
+  }, [task, id, idAliases, router]);
+
+  if (!task) {
+    return (
+      <div className="p-6 text-sm" style={{ color: "var(--text-muted)" }}>
+        {hydrated ? (id && idAliases[id] ? "Redirecting…" : "Task not found.") : "Loading…"}
+      </div>
+    );
+  }
 
   const submitComment = () => {
     if (!comment.trim()) return;
