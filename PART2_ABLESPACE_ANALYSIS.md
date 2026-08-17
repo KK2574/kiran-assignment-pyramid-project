@@ -82,7 +82,7 @@ The frontend works standalone too — if it can't reach the API it falls back to
 **Frontend (Vercel)**
 1. Push this repo to GitHub
 2. Import the repo in Vercel, set root directory to `frontend`
-3. Add env var `NEXT_PUBLIC_API_URL` = your deployed backend URL
+3. Add env var `kiran-assignment-pyramid-project-6x.vercel.app` = your deployed backend URL
 4. Deploy
 5. Note your **production** Vercel URL specifically (Settings → Domains) — every push can also generate a new throwaway preview URL, and only the stable production one should be used below and submitted as your live link
 
